@@ -133,4 +133,4 @@ def sort_list(rows, key, reverse=False):
 def frozen_now(contest):
     """返回榜单当前是否处于封榜状态（用于前端横幅/徽标）。"""
     from backend.judge.ranking import is_frozen
-    return not is_frozen(contest)
+    return is_frozen(contest)

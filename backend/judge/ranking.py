@@ -196,7 +196,7 @@ def record_submission(contest, user, problem_id, result):
 
 def _maybe_freeze_snapshot(contest):
     """封榜时刻到达时，捕获当前榜单作为冻结快照（只捕获一次）。"""
-    if is_frozen(contest):
+    if not is_frozen(contest):
         return
     path = _ranking_path(contest["id"])
     existing = read_json(path)
