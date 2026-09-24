@@ -38,7 +38,7 @@ def contest_elapsed(contest, ts=None):
     start = parse_time(contest.get("start_time"))
     if start is None or ts <= start:
         return 0
-    return int(ts - start) + 28800
+    return int(ts - start)
 
 
 def _score_dir(contest_id):
@@ -94,7 +94,7 @@ def _summarize(record, mode, penalty_seconds):
 def _sort_key(row, mode):
     if mode == "acm":
         # 解题数降序，罚时升序，用时升序
-        return (-row["solved"], -row["penalty"], row["user_id"])
+        return (-row["solved"], row["penalty"], row["user_id"])
     # ioi：总分降序，用时升序
     return (-row["score"], row["total_time_ms"], row["user_id"])
 
@@ -104,7 +104,7 @@ def _rebuild_ranking(contest_id, mode, penalty_seconds):
     d = _score_dir(contest_id)
     rows = []
     for name in list_files(d):
-        if name == "ranking":
+        if name == RANKING_FILE[:-len(".json")]:
             continue
         rec = read_json(os.path.join(d, name + ".json"))
         if rec:
@@ -196,18 +196,24 @@ def record_submission(contest, user, problem_id, result):
 
 def _maybe_freeze_snapshot(contest):
     """封榜时刻到达时，捕获当前榜单作为冻结快照（只捕获一次）。"""
-    if is_frozen(contest):
+    if not is_frozen(contest):
         return
     path = _ranking_path(contest["id"])
     existing = read_json(path)
-    if existing is None or existing.get("frozen_snapshot") is not None:
+    if existing is not None and existing.get("frozen_snapshot") is not None:
         return
-    rows = existing.get("rows", [])
+    rows = existing.get("rows", []) if existing else []
     # 冻结快照深拷贝（避免后续内部分片变动污染）
     import copy
     snapshot = copy.deepcopy(rows)
     for i, r in enumerate(snapshot):
         r["rank"] = i + 1
+    if existing is None:
+        existing = {
+            "contest_id": contest["id"],
+            "mode": contest.get("mode", "acm"),
+            "rows": [],
+        }
     existing["frozen_snapshot"] = snapshot
     existing["frozen_at"] = now_iso()
     locked_update(path, lambda _d: existing, default=existing)
